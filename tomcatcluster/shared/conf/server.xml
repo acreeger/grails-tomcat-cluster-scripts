@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Server port='${shutdown.port}' shutdown='SHUTDOWN'>
+
+	<Listener className='org.apache.catalina.core.AprLifecycleListener' SSLEngine='on' />
+	<Listener className='org.apache.catalina.core.JasperListener' />
+	<Listener className='org.apache.catalina.mbeans.ServerLifecycleListener' />
+	<Listener className='org.apache.catalina.mbeans.GlobalResourcesLifecycleListener' />
+
+	<Service name='Catalina'>
+
+		<Connector port='${http.port}' protocol='HTTP/1.1' connectionTimeout='20000' redirectPort='${ssl.port}'
+			compression='on' compressableMimeType='text/html,text/xml,text/plain' />
+
+		<Connector port='${ajp.port}' protocol='AJP/1.3'
+			handler.list='mx' mx.enabled='true' mx.log4jEnabled='false' mx.httpPort='${mx.http.port}' />
+
+		<Engine name='Catalina' defaultHost='localhost' jvmRoute='worker${cluster.server.number}_${cluster.instance.number}'>
+
+			<Cluster className='org.apache.catalina.ha.tcp.SimpleTcpCluster' channelSendOptions='8'>
+
+				<Manager className='org.apache.catalina.ha.session.DeltaManager'
+							expireSessionsOnShutdown='false'
+							notifyListenersOnReplication='true'/>
+
+				<Channel className='org.apache.catalina.tribes.group.GroupChannel'>
+					<Membership className='org.apache.catalina.tribes.membership.McastService'
+									address='${cluster.multicast.address}'
+									port='${cluster.multicast.port}'
+									frequency='500'
+									dropTime='3000'/>
+					<Receiver className='org.apache.catalina.tribes.transport.nio.NioReceiver'
+								 address='auto'
+								 port='${cluster.port}'
+								 selectorTimeout='100'
+								 maxThreads='6'/>
+
+					<Sender className='org.apache.catalina.tribes.transport.ReplicationTransmitter'>
+						<Transport className='org.apache.catalina.tribes.transport.nio.PooledParallelSender'/>
+					</Sender>
+
+					<Interceptor className='org.apache.catalina.tribes.group.interceptors.TcpFailureDetector'/>
+					<Interceptor className='org.apache.catalina.tribes.group.interceptors.MessageDispatch15Interceptor'/>
+					<Interceptor className='org.apache.catalina.tribes.group.interceptors.ThroughputInterceptor'/>
+				</Channel>
+
+				<Valve className='org.apache.catalina.ha.tcp.ReplicationValve'
+						 filter='.*\.gif;.*\.js;.*\.jpg;.*\.png;.*\.htm;.*\.html;.*\.css;.*\.txt;'/>
+
+				<ClusterListener className='org.apache.catalina.ha.session.ClusterSessionListener'/>
+			</Cluster>
+
+			<Host name='localhost' appBase='${cluster.root}/shared/webapps' unpackWARs='true' autoDeploy='true'
+				xmlValidation='false' xmlNamespaceAware='false'>
+
+				<Valve className='org.apache.catalina.valves.AccessLogValve' directory='logs'
+					prefix='localhost_access_log.' suffix='.txt' pattern='common' resolveHosts='false'/>
+
+			</Host>
+		</Engine>
+	</Service>
+</Server>
+

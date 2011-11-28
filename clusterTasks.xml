@@ -1,0 +1,94 @@
+<?xml version='1.0'?>
+<project name='clusterTasks'>
+
+	<!-- ant -f cluster/clusterTasks.xml createCluster -Dcluster.root=/usr/local/tomcatcluster -Dconfig=clustered-config.groovy -->
+	<target name='createCluster'
+		description='Creates a new cluster'
+		depends='getClusterInfo,confirmClusterDelete,noDeleteCluster,doCreateCluster' />
+
+	<target name='getClusterInfo'>
+		<fail unless='cluster.root' message='Pass in the cluster root directory as -Dcluster.root=x' />
+		<available file='${cluster.root}' property='cluster.exists' />
+
+		<fail unless='config' message='Pass in the config groovy file -Dconfig=x' />
+		<available file='${config}' property='config.exists' />
+	</target>
+
+	<target name='confirmClusterDelete' if='cluster.exists'>
+		<input message='The cluster directory ${cluster.root} exists and will be deleted. Continue (y/n)?'
+			validargs='y,n' addproperty='do.delete'
+		/>
+		<condition property='do.abort'>
+			<equals arg1='n' arg2='${do.delete}'/>
+		</condition>
+	</target>
+
+	<target name='noDeleteCluster' if='do.abort'>
+		<echo>Not creating cluster</echo>
+	</target>
+
+	<target name='doCreateCluster' unless='do.abort'>
+		<delete dir='${cluster.root}' />
+		<mkdir dir='${cluster.root}' />
+
+		<copy todir='${cluster.root}' preservelastmodified='true' includeEmptyDirs='true'>
+			<fileset dir='tomcatcluster' />
+		</copy>
+
+		<mkdir dir='${cluster.root}/shared/lib' />
+		<mkdir dir='${cluster.root}/shared/logs' />
+		<mkdir dir='${cluster.root}/shared/webapps' />
+		<mkdir dir='${cluster.root}/tomcat/logs' />
+
+		<chmod dir='${cluster.root}/tomcat/bin' perm='+x' includes='*.sh'/>
+
+		<copy file='cluster-config.groovy' tofile='${cluster.root}/shared/lib/${config}' />
+	</target>
+
+	<!-- ant -f cluster/clusterTasks.xml createInstance -Dserver.number=1 -Dinstance.number=1 -Dcluster.root=/usr/local/tomcatcluster -->
+	<target name='createInstance' description='Creates a new node in an existing cluster'>
+
+		<fail unless='server.number' message='pass in the server number as -Dserver.number=x' />
+		<fail unless='instance.number' message='pass in the instance number as -Dinstance.number=x' />
+		<fail unless='cluster.root' message='Pass in the cluster root directory as -Dcluster.root=x' />
+
+		<property name='dir' value='${cluster.root}/instance_${instance.number}' />
+
+		<delete dir='${dir}' />
+
+		<mkdir dir='${dir}/bin' />
+		<mkdir dir='${dir}/conf' />
+		<mkdir dir='${dir}/logs' />
+		<mkdir dir='${dir}/temp' />
+		<mkdir dir='${dir}/work' />
+
+		<echo file='${dir}/bin/setenv.sh' append='false'>
+CATALINA_OPTS="-Xmx512m -XX:MaxPermSize=128m -XX:+HeapDumpOnOutOfMemoryError"
+CATALINA_OPTS="$CATALINA_OPTS -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.port=697${instance.number}"
+</echo>
+
+		<copy file='${cluster.root}/tomcat/conf/web.xml' todir='${dir}/conf' preservelastmodified='true' />
+
+		<echo file='${dir}/conf/catalina.properties' append='false'>
+package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.tomcat.,org.apache.jasper.,sun.beans.
+package.definition=sun.,java.,org.apache.catalina.,org.apache.coyote.,org.apache.tomcat.,org.apache.jasper.
+common.loader=${catalina.home}/lib,${catalina.home}/lib/*.jar,${catalina.base}/../shared/lib
+server.loader=
+tomcat.util.buf.StringCache.byte.enabled=true
+
+shutdown.port=801${instance.number}
+http.port=809${instance.number}
+jmx.port=697${instance.number}
+cluster.server.number=${server.number}
+cluster.instance.number=${instance.number}
+cluster.root=${cluster.root}
+cluster.port=500${instance.number}
+cluster.multicast.address=228.0.0.4
+cluster.multicast.port=45564
+ajp.port=510${instance.number}
+ssl.port=845${instance.number}
+mx.http.port=520${instance.number}
+</echo>
+
+	</target>
+</project>
