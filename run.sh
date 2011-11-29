@@ -72,8 +72,8 @@ elif [ "$ACTION" = "stop" ] ; then
 			for ((a=1; a<6; a++)) do
 				echo "waiting for shutdown..."
 				sleep 5
-				ps_output=`ps -h -p $current_pid`
-				if [ -z "$ps_output" ]; then
+				ps_output=`ps -h -p $current_pid | wc -l`
+				if [ $ps_output = "1" ]; then
 					echo "instance $INSTANCE successfully shutdown"
 					rm -f $CATALINA_PID
 					exit 0
@@ -87,8 +87,8 @@ elif [ "$ACTION" = "stop" ] ; then
 		for ((a=1; a<6; a++)) do
 			echo "waiting for shutdown..."
 			sleep 5
-			ps_output=`ps -h -p $current_pid`
-			if [ -z "$ps_output" ]; then
+			ps_output=`ps -h -p $current_pid | wc -l`
+			if [ $ps_output = "1" ]; then
 				echo "instance $INSTANCE successfully shutdown"
 				rm -f $CATALINA_PID
 				exit 0
