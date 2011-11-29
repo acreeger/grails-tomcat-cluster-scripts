@@ -11,8 +11,7 @@
 		<Connector port='${http.port}' protocol='HTTP/1.1' connectionTimeout='20000' redirectPort='${ssl.port}'
 			compression='on' compressableMimeType='text/html,text/xml,text/plain' />
 
-		<Connector port='${ajp.port}' protocol='AJP/1.3'
-			handler.list='mx' mx.enabled='true' mx.log4jEnabled='false' mx.httpPort='${mx.http.port}' />
+		<Connector port='${ajp.port}' protocol='AJP/1.3' />
 
 		<Engine name='Catalina' defaultHost='localhost' jvmRoute='worker${cluster.server.number}_${cluster.instance.number}'>
 
